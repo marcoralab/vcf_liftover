@@ -1,0 +1,9 @@
+*.vcf.gz*
+*.fa.gz
+*.chain.gz
+*.chain
+.snake*
+deprecated
+generalized
+temp
+__pycache__

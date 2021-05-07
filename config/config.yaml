@@ -1,0 +1,40 @@
+# If a list item isn't the original build, the pipeline will lift over.
+#   If any of the source builds is GRCh38/b38/hg38, the pipeline will error,
+#   since UCSC does not provide chain files for hg38 to any build < hg19.
+output_builds: [b37, GRCh38]
+
+# Many b37 files are mislabled as hg19 or GRCh37, which causea liftover to fail.
+#   This option prevents that by assuming every hg19/b37/GRCh37/HumanG1Kv37
+#   file is b37 or HumanG1Kv37.
+#
+#   If you are sure you have the right build, you can set this to false,
+#   otherwise, you can generally assume that files labeled as hg19 or GRCh37 are
+#   actually HumanG1Kv37 or b37, which are identical other than the inclusion of
+#   an hsv dummy contig (NC_007605). If chromosme 1 is "1", it is one of those,
+#   and if chromosme 1 is "chr1", it is hg19 or GRCh37.
+#
+#   More info here: https://gatk.broadinstitute.org/hc/en-us/articles/360035890711-GRCh37-hg19-b37-humanG1Kv37-Human-Reference-Discrepancies
+
+all_GATK_builds: False
+
+inputs:
+  HGDP:
+    build: hg38
+    # Use {chrom} in the filename to indicate if there are files for each chrom.
+    input_vcf: /sc/arion/projects/LOAD/Public_Data/HGDP/hgdp_wgs.20190516.full.chr{chrom}.vcf.gz
+    # true if the vcf file contains multiple chromosomes and has to be split
+    multichrom: false
+    # VCF filter to apply (leave blank or delete for none)
+    filter: 'PASS'
+    # concatenate at the end? true if so (NOT IMPLEMENTED)
+    concatenate: true
+
+    output: output/hgdp_wgs.20190516.full
+#  ADNI:
+#    build: b37
+#    # Use {chrom} in the filename to indicate if there are files for each chrom.
+#    input_vcf: /sc/arion/projects/LOAD/Data/ADNI/WGS/ADNI.808_indiv.minGQ_21.pass.ADNI_ID.chr{chrom}.vcf.gz
+#    # true if the vcf file contains multiple chromosomes and has to be split
+#    multichrom: false
+#    # concatenate at the end? true if so (NOT IMPLEMENTED)
+#    concatenate: true

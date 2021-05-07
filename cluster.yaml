@@ -1,7 +1,10 @@
 __default__:
   project: acc_LOAD
-  partition: chimera
+  partition: bode
   queue: premium
   cores: 1
   mem: 5200
   time: '24:00'
+liftover:
+  cores: 10
+  mem: 8000

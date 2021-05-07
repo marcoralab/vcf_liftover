@@ -1,7 +1,11 @@
+name: hgdp
 channels:
   - bioconda
   - conda-forge
 dependencies:
   - bcftools=1.10.2
+  - htslib=1.10.2
+  - samtools=1.10
   - python=3.7.7
-  - crossmap=0.4.2
+  - pandas
+  - numpy

@@ -1,0 +1,240 @@
+import os
+import stat
+import re
+import pandas as pd
+import numpy as np
+
+chrs = range(1,23)
+
+chrs = 22
+
+include: 'ref.smk'
+
+configfile: "config/config.yaml"
+if ('inputs' in config):
+    inputs = config['inputs']
+else:
+    raise KeyError("inputs are missing in config.yaml")
+
+inputs = pd.DataFrame.from_dict(inputs, orient='index')
+
+def calculate_build(in_build):
+    if in_build.lower() in ['grch36', 'b36', 'ncbi36', 'hg18']:
+        return 36
+    elif in_build.lower() in ['grch37', 'b37', 'hg19']:
+        return 37
+    elif in_build.lower() in ['grch38', 'b38', 'hg38']:
+        return 38
+
+def fillcol(df, colname, default):
+    if colname not in df:
+        df[colname] = default
+        return df
+    df[colname] = df[colname].fillna(default)
+    return df
+
+
+output_builds = {calculate_build(x) for x in config['output_builds']}
+
+inputs = fillcol(inputs, 'output', '_rplc_')
+inputs = fillcol(inputs, 'filter', '_none_')
+inputs['build_no_start'] = [calculate_build(x) for x in inputs['build']]
+
+
+outputs_zip = zip(inputs.index.to_list(), inputs['output'].to_list())
+
+inputs['output'] = ['output/{}'.format(x) if y == '_rplc_' else y
+                    for x, y in zip(
+                      inputs.index.to_list(), inputs['output'].to_list())]
+
+inputs['output_full'] = ['{}.{{build}}.{{chrom}}.vcf.gz'.format(x)
+                         for x in inputs['output']]
+
+localrules: all
+
+chbs = lambda: zip(inputs.index.to_list(), inputs['build_no_start'].to_list())
+
+def liftbuilds(tmplt, cht, startbuild):
+  builds = output_builds - {startbuild}
+  return expand(tmplt, cohort=cht, tobuild=builds)
+
+def flatten(l):
+  return sum(map(flatten,l),[]) if isinstance(l,list) else [l]
+
+
+mismatched = 'output/{cohort}.b{tobuild}.mismatched_chroms.vcf.gz'
+mismatched = flatten([liftbuilds(mismatched, x, y) for x, y in chbs()])
+
+matched = 'output/{cohort}.b{tobuild}.chr{{chrom}}_only.vcf.gz'
+matched = flatten([liftbuilds(matched, x, y) for x, y in chbs()])
+matched = flatten(expand(matched, chrom = chrs))
+
+
+rule all:
+  input:
+    mismatched,
+    matched
+
+
+
+def getstartfile(wildcards):
+  return inputs.loc[wildcards.cohort, 'input_vcf']
+
+def chromname_in(wildcards):
+  if int(wildcards.frombuild) == 38:
+    return 'chr{}'.format(wildcards.chrom)
+  return wildcards.chrom
+
+
+rule split_chrom:
+  input: getstartfile
+  output:
+    vcf = temp('temp/{cohort}.{frombuild}.chr{chrom}.SPLIT.vcf.gz'),
+    tbi = temp('temp/{cohort}.{frombuild}.chr{chrom}.SPLIT.vcf.gz.tbi')
+  params:
+    chr = chromname_in
+  conda: 'envs/hgdpenv.yaml'
+  shell: '''
+bcftools view --regions {params.chr} {input} -Oz -o {output.vcf}
+bcftools index -t {output.vcf}
+'''
+
+
+def gsfi(wildcards):
+  sf = getstartfile(wildcards)
+  if '{chrom}' in sf:
+    return sf
+  return rules.split_chrom.output
+
+
+rule filter:
+  input: gsfi
+  output:
+    vcf = temp('temp/{cohort}.{frombuild}.chr{chrom}.FILTERED.vcf.gz'),
+    tbi = temp('temp/{cohort}.{frombuild}.chr{chrom}.FILTERED.vcf.gz.tbi')
+  params:
+    filter = lambda wildcards: inputs.loc[wildcards.cohort, 'filter']
+  conda: 'envs/hgdpenv.yaml'
+  shell: '''
+bcftools view -f {params.filter} {input} -Oz -o {output.vcf}
+bcftools index -t {output.vcf}
+'''
+
+
+rule nofilter:
+  input: gsfi
+  output:
+    vcf = temp('temp/{cohort}.{frombuild}.chr{chrom}.UNFILTERED.vcf.gz'),
+    tbi = temp('temp/{cohort}.{frombuild}.chr{chrom}.UNFILTERED.vcf.gz.tbi')
+  conda: 'envs/hgdpenv.yaml'
+  shell: '''
+ln -s {input} {output.vcf}
+bcftools index -t {output.vcf}
+'''
+
+gatk = 'docker://broadinstitute/gatk:4.1.8.1'
+
+def lift_input(wildcards):
+  if inputs.loc[wildcards.cohort, 'filter'] == '_none_':
+    return rules.nofilter.output.vcf
+  return rules.filter.output.vcf
+
+rule liftover:
+  input:
+    vcf = lift_input,
+    chain = 'data/ref/{frombuild}_to_b{tobuild}.over.chain.gz',
+    fasta = 'data/ref/b{tobuild}.fa.gz',
+    fdict = 'data/ref/b{tobuild}.dict'
+  output:
+    vcf = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.vcf.gz'),
+    tbi = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.vcf.gz.tbi'),
+    rejects = 'output/rejects/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.rejects.vcf.gz'
+  container: gatk
+  log: 'logs/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.liftover.log'
+  shell: '''
+gatk LiftoverVcf \
+ --I {input.vcf} --O {output.vcf} --CHAIN {input.chain} --R {input.fasta} \
+ --REJECT {output.rejects} --MAX_RECORDS_IN_RAM 50000 &> {log}
+'''
+
+def chromname(wildcards):
+  if int(wildcards.tobuild) == 38:
+    return 'chr{}'.format(wildcards.chrom)
+  return wildcards.chrom
+
+def get_out(wc):
+  return inputs.loc[wildcards.cohort, 'output']
+
+
+def matched_in_vcf(wildcards):
+  fbuild = inputs.loc[wildcards.cohort, 'build']
+  if GATK_BUILDS_ONLY:
+    fbuild = 'b' + calculate_build(fbuild)
+  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}.vcf.gz'
+  return expand(string_, frombuild=fbuild, chrom=chrs)
+
+
+def matched_in_tbi(wildcards):
+  fbuild = inputs.loc[wildcards.cohort, 'build']
+  if GATK_BUILDS_ONLY:
+    fbuild = 'b' + calculate_build(fbuild)
+  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}.vcf.gz.tbi'
+  return expand(string_, frombuild=fbuild, chrom=chrs)
+
+
+rule keep_chrom:
+  input:
+    vcf = matched_in_vcf,
+    tbi = matched_in_tbi
+  params:
+    chrom = chromname
+  output:
+    vcf = 'output/{cohort}.b{tobuild}.chr{chrom}_only.vcf.gz',
+    tbi = 'output/{cohort}.b{tobuild}.chr{chrom}_only.vcf.gz.tbi'
+  conda: 'envs/hgdpenv.yaml'
+  shell: '''
+bcftools view -t '{params.chrom}' -Oz -o {output.vcf} {input.vcf}
+bcftools index -t {output.vcf}
+'''
+
+rule separate_chrom:
+  input:
+    vcf = rules.liftover.output.vcf,
+    tbi = rules.liftover.output.tbi
+  output:
+    vcf = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}_different.vcf.gz'),
+    tbi = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}_different.vcf.gz.tbi'),
+  conda: 'envs/hgdpenv.yaml'
+  shell: '''
+bcftools view -t '^chr{wildcards.chrom}' -Oz -o {output.vcf} {input.vcf}
+bcftools index -t {output.vcf}
+'''
+
+
+def mismatched_in_vcf(wildcards):
+  fbuild = inputs.loc[wildcards.cohort, 'build']
+  if GATK_BUILDS_ONLY:
+    fbuild = 'b' + calculate_build(fbuild)
+  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}_different.vcf.gz'
+  return expand(string_, frombuild=fbuild, chrom=chrs)
+
+
+def mismatched_in_tbi(wildcards):
+  fbuild = inputs.loc[wildcards.cohort, 'build']
+  if GATK_BUILDS_ONLY:
+    fbuild = 'b' + calculate_build(fbuild)
+  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}_different.vcf.gz.tbi'
+  return expand(string_, frombuild=fbuild, chrom=chrs)
+
+rule separate_chrom_combine:
+  input:
+    vcf = mismatched_in_vcf,
+    tbi = mismatched_in_tbi
+  output:
+    vcf = 'output/{cohort}.b{tobuild}.mismatched_chroms.vcf.gz',
+    tbi = 'output/{cohort}.b{tobuild}.mismatched_chroms.vcf.gz.tbi'
+  conda: 'envs/hgdpenv.yaml'
+  shell: '''
+bcftools concat -a -Oz -o {output.vcf} {input.vcf}
+bcftools index -t {output.vcf}
+'''
