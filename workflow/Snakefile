@@ -6,7 +6,7 @@ import numpy as np
 
 chrs = range(1,23)
 
-chrs = 22
+#chrs = 22
 
 include: 'ref.smk'
 
@@ -17,6 +17,8 @@ else:
     raise KeyError("inputs are missing in config.yaml")
 
 inputs = pd.DataFrame.from_dict(inputs, orient='index')
+
+GATK_BUILDS_ONLY = config['all_GATK_builds']
 
 def calculate_build(in_build):
     if in_build.lower() in ['grch36', 'b36', 'ncbi36', 'hg18']:

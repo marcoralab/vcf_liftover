@@ -7,7 +7,10 @@ import tempfile
 import os
 import shutil
 import sys
-from build_helpers import *
+try:
+    from build_helpers import *
+except:
+    from workflow.scripts.build_helpers import *
 
 
 def process_line(line, build, regex, b37_map):
@@ -23,7 +26,7 @@ def process_line(line, build, regex, b37_map):
     return line
 
 if __name__ == "__main__":
-    if snakemake:
+    if 'snakemake' in locals():
         fasta_file = snakemake.input['fasta']
         output_file = snakemake.output[0]
         b37_file = snakemake.input['b37']
@@ -38,7 +41,7 @@ if __name__ == "__main__":
 
     hg38 = ['GRCH38', 'B38', 'HG38', 'HG19']
 
-    if build in hg38:
+    if build.upper() in hg38:
         shutil.copy(fasta_file, output_file)
         res = os.system('samtools faidx {ofi}'.format(ofi=output_file))
         assert (res == 0), "Failed to faidx"

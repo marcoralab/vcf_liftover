@@ -2,19 +2,22 @@
 
 import gzip
 import pandas as pd
-from build_helpers import *
+try:
+    from build_helpers import *
+except:
+    from workflow.scripts.build_helpers import *
 
 
 def process_line(line, in_build, out_build, b37_map):
     cols = line.strip().split(' ')
     if cols[0] == 'chain':
         if in_build.upper() == 'B37':
-            cols[2] = b37_convert(cols[2], b37_map, in_build)
+            cols[2] = b37_convert(cols[2], b37_map, in_build.upper())
         elif in_build.upper() not in ['GRCH38', 'B38', 'HG38', 'HG19']:
             cols[2] = generic_convert(cols[2])
 
         if out_build.upper() == 'B37':
-            cols[7] = b37_convert(cols[7], b37_map, in_build)
+            cols[7] = b37_convert(cols[7], b37_map, out_build.upper())
         elif out_build.upper() not in ['GRCH38', 'B38', 'HG38', 'HG19']:
             cols[7] = generic_convert(cols[7])
 
@@ -23,7 +26,7 @@ def process_line(line, in_build, out_build, b37_map):
         return line.strip()
 
 if __name__ == "__main__":
-    if snakemake:
+    if 'snakemake' in locals():
         input_file = snakemake.input['chain']
         output_file = snakemake.output[0]
         b37_file = snakemake.input['b37']
@@ -31,11 +34,11 @@ if __name__ == "__main__":
         out_build = snakemake.wildcards['tobuild']
         smk = True
     else:
-        input_file = 'data/ref/hg19_to_hg38.over.chain.gz'
-        output_file = 'data/ref/b37_to_b38.over.chain.gz'
+        input_file = 'temp/ref/hg38_to_hg19.over.chain.gz' #'temp/ref/hg19_to_hg38.over.chain.gz'
+        output_file = 'data/ref/hg38_to_b37.over.chain.gz' #'data/ref/b37_to_b38.over.chain.gz'
         b37_file = 'data/ref/b37.builds.tsv'
-        in_build = 'b37'
-        out_build ='HG38'
+        in_build = 'hg38' #'b37'
+        out_build = 'b37' #'HG38'
         smk = False
 
     b37 = pd.read_csv(b37_file, sep='\t')
