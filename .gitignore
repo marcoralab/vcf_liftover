@@ -6,4 +6,8 @@
 deprecated
 generalized
 temp
+logs
+data/**
+!data/ref/b37.builds.tsv
 __pycache__
+.ropeproject
