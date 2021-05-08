@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import gzip
+from xopen import xopen
 import re
 import pandas as pd
 import tempfile
@@ -14,16 +14,13 @@ except:
 
 
 def process_line(line, build, regex, b37_map):
-    line = line.strip()
-    hg38 = ['GRCH38', 'B38', 'HG38', 'HG19']
-    if line[0] == '>' and build.upper() not in hg38:
-        contig = re.search(regex, line).group()
-        if build.upper() == 'B37':
-            contig = b37_convert(contig, b37_map, build.upper())
-        else:
-            contig = generic_convert(contig)
-        return re.sub(regex, contig, line)
-    return line
+    line = line.decode()
+    contig = re.search(regex, line).group()
+    if build.upper() == 'B37':
+        contig = b37_convert(contig, b37_map, build.upper())
+    else:
+        contig = generic_convert(contig)
+    return re.sub(regex, contig, line).encode('ascii')
 
 if __name__ == "__main__":
     if 'snakemake' in locals():
@@ -33,7 +30,7 @@ if __name__ == "__main__":
         build = snakemake.wildcards['tobuild']
         smk = True
     else:
-        fasta_file = 'data/ref/hg19.fa.gz'
+        fasta_file = 'temp/ref/hg19.fa.gz'
         output_file = 'data/ref/b37.fa.gz'
         b37_file = 'data/ref/b37.builds.tsv'
         build = 'b37'
@@ -51,11 +48,13 @@ if __name__ == "__main__":
 
     regex = re.compile(r'(?<=^>)\S+')
 
-    with gzip.open(fasta_file, 'rt') as infile:
-        with tempfile.NamedTemporaryFile('wt') as tfile:
+    with xopen(fasta_file, 'rb') as infile:
+        with tempfile.NamedTemporaryFile('wb') as tfile:
+            print(tfile.name)
             for line in infile:
-                oline = process_line(line, build, regex, b37)
-                print(oline, file=tfile)
+                if line[0] == 62: # 62 is ascii for '>'
+                    line = process_line(line, build, regex, b37)
+                tfile.write(line)
             res = os.system('cat {tf} | bgzip > {ofi}'.format(
                 tf=tfile.name, ofi=output_file))
             assert (res == 0), "Failed to bgzip"
