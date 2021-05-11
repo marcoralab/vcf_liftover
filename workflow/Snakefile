@@ -151,12 +151,16 @@ rule liftover:
     vcf = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.vcf.gz'),
     tbi = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.vcf.gz.tbi'),
     rejects = 'output/rejects/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.rejects.vcf.gz'
+  params:
+    tempdir = 'temp/liftOver/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}'
   container: gatk
   log: 'logs/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.liftover.log'
   shell: '''
+mkdir -p {params.tempdir}
 gatk LiftoverVcf \
  --I {input.vcf} --O {output.vcf} --CHAIN {input.chain} --R {input.fasta} \
- --REJECT {output.rejects} --MAX_RECORDS_IN_RAM 50000 &> {log}
+ --REJECT {output.rejects} --TMP_DIR {params.tempdir} \
+ --MAX_RECORDS_IN_RAM 50000 &> {log}
 '''
 
 def chromname(wildcards):
@@ -203,12 +207,14 @@ rule separate_chrom:
   input:
     vcf = rules.liftover.output.vcf,
     tbi = rules.liftover.output.tbi
+  params:
+    chrom = chromname
   output:
     vcf = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}_different.vcf.gz'),
     tbi = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}_different.vcf.gz.tbi'),
   conda: 'envs/hgdpenv.yaml'
   shell: '''
-bcftools view -t '^chr{wildcards.chrom}' -Oz -o {output.vcf} {input.vcf}
+bcftools view -t '^{params.chrom}' -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
 '''
 
