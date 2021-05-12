@@ -16,7 +16,8 @@ except:
 def process_line(line, build, regex, b37_map):
     line = line.decode()
     contig = re.search(regex, line).group()
-    if build.upper() == 'B37':
+    b37 = ['B37', 'HUMANG1KV37', 'GRCH37']
+    if build.upper() in b37:
         contig = b37_convert(contig, b37_map, build.upper())
     else:
         contig = generic_convert(contig)

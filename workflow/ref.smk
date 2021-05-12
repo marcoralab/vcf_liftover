@@ -40,9 +40,11 @@ cp {input.chain} {output}
 
 
 def calculate_build_chain_(in_build):
+  if in_build.lower() in ['grch35', 'b35', 'ncbi35', 'hg17']:
+    build = '17'
   if in_build.lower() in ['grch36', 'b36', 'ncbi36', 'hg18']:
     return '18'
-  elif in_build.lower() in ['grch37', 'b37', 'hg19']:
+  elif in_build.lower() in ['grch37', 'b37', 'hg19', 'humang1kv37']:
     return '19'
   elif in_build.lower() in ['grch38', 'b38', 'hg38']:
     return '38'
@@ -79,9 +81,11 @@ zcat {input.fasta} | bgzip > {output}
 
 def calculate_build_fasta(wildcards):
   build = wildcards.tobuild
+  if build.lower() in ['grch35', 'b35', 'ncbi35', 'hg17']:
+    build = 'hg17'
   if build.lower() in ['grch36', 'b36', 'ncbi36', 'hg18']:
     build = 'hg18'
-  elif build.lower() in ['grch37', 'b37', 'hg19']:
+  elif build.lower() in ['grch37', 'b37', 'hg19', 'humang1kv37']:
     build = 'hg19'
   elif build.lower() in ['grch38', 'b38', 'hg38']:
     build = 'hg38'

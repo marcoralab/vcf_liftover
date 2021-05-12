@@ -10,13 +10,14 @@ except:
 
 def process_line(line, in_build, out_build, b37_map):
     cols = line.strip().split(' ')
+    b37 = ['B37', 'HUMANG1KV37', 'GRCH37']
     if cols[0] == 'chain':
-        if in_build.upper() == 'B37':
+        if in_build.upper() in b37:
             cols[2] = b37_convert(cols[2], b37_map, in_build.upper())
         elif in_build.upper() not in ['GRCH38', 'B38', 'HG38', 'HG19']:
             cols[2] = generic_convert(cols[2])
 
-        if out_build.upper() == 'B37':
+        if out_build.upper() in b37:
             cols[7] = b37_convert(cols[7], b37_map, out_build.upper())
         elif out_build.upper() not in ['GRCH38', 'B38', 'HG38', 'HG19']:
             cols[7] = generic_convert(cols[7])
