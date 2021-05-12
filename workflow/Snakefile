@@ -4,9 +4,18 @@ import re
 import pandas as pd
 import numpy as np
 
-chrs = range(1,23)
 
-#chrs = 22
+def parse_chrom(chrs):
+    clist = [x.split(":") for x in chrs.split(",")]
+    parsed = []
+    for chrs in clist:
+        if len(chrs) == 2:
+            chrs = [str(c) for c in range(int(chrs[0]), int(chrs[1]) + 1)]
+        elif len(chrs) != 1:
+            raise ValueError("Invalid chromosome list.")
+        parsed += chrs
+    return parsed
+
 
 include: 'ref.smk'
 
@@ -40,45 +49,60 @@ output_builds = {calculate_build(x) for x in config['output_builds']}
 
 inputs = fillcol(inputs, 'output', '_rplc_')
 inputs = fillcol(inputs, 'filter', '_none_')
+inputs = fillcol(inputs, 'contigs', '1:22')
 inputs['build_no_start'] = [calculate_build(x) for x in inputs['build']]
+inputs['contigs'] = [parse_chrom(x) for x in inputs['contigs']]
 
-
-outputs_zip = zip(inputs.index.to_list(), inputs['output'].to_list())
-
-inputs['output'] = ['output/{}'.format(x) if y == '_rplc_' else y
-                    for x, y in zip(
-                      inputs.index.to_list(), inputs['output'].to_list())]
-
-inputs['output_full'] = ['{}.{{build}}.{{chrom}}.vcf.gz'.format(x)
-                         for x in inputs['output']]
 
 localrules: all
 
-chbs = lambda: zip(inputs.index.to_list(), inputs['build_no_start'].to_list())
+chbs = lambda: zip(inputs.index.to_list(),
+                   inputs['build_no_start'].to_list(),
+                   inputs['contigs'].to_list())
+
+
+def filter_mainchrs(chrlist):
+  chrset = set(chrlist) & set(parse_chrom('1:22,X,Y,MT'))
+  chrlist = [*chrset]
+  chrlist.sort()
+  return chrlist
+
 
 def liftbuilds(tmplt, cht, startbuild):
   builds = output_builds - {startbuild}
   return expand(tmplt, cohort=cht, tobuild=builds)
+
+
+def liftbuilds_chr(tmplt, cht, startbuild, chr):
+  builds = output_builds - {startbuild}
+  chr_ = filter_mainchrs(chr)
+  return expand(tmplt, cohort=cht, chrom=chr_, tobuild=builds)
+
 
 def flatten(l):
   return sum(map(flatten,l),[]) if isinstance(l,list) else [l]
 
 
 mismatched = 'output/{cohort}.b{tobuild}.mismatched_chroms.vcf.gz'
-mismatched = flatten([liftbuilds(mismatched, x, y) for x, y in chbs()])
+mismatched = flatten([liftbuilds(mismatched, x, y) for x, y, z in chbs()])
 
-matched = 'output/{cohort}.b{tobuild}.chr{{chrom}}_only.vcf.gz'
-matched = flatten([liftbuilds(matched, x, y) for x, y in chbs()])
-matched = flatten(expand(matched, chrom = chrs))
+matched = 'output/{cohort}.b{tobuild}.chr{chrom}_only.vcf.gz'
+matched = flatten([liftbuilds_chr(matched, x, y, z) for x, y, z in chbs()])
 
 matched_allchr = 'output/{cohort}.b{tobuild}.same_chr.vcf.gz'
-matched_allchr = flatten([liftbuilds(matched_allchr, x, y) for x, y in chbs()])
+matched_allchr = flatten([liftbuilds(matched_allchr, x, y) for x, y, z in chbs()])
 
 if config['concatenate']:
   matched = matched_allchr
 
+b37file = 'data/ref/b37.builds.tsv'
+b37_contigs = flatten(pd.read_csv(b37file, sep='\t').values.tolist())
+constraint_exclude = {'chr' + x for x in parse_chrom('1:22,X,Y,M')}
+b37_contigs_excl = set(b37_contigs) - constraint_exclude
+b37_contigs_excl = '|'.join([*b37_contigs_excl])
+
 wildcard_constraints:
-  chrom="\d{1,2}"
+  chrom=b37_contigs_excl
 
 
 rule all:
@@ -91,10 +115,14 @@ rule all:
 def getstartfile(wildcards):
   return inputs.loc[wildcards.cohort, 'input_vcf']
 
-def chromname_in(wildcards):
-  if int(re.findall(r'\d+', wildcards.frombuild)[-1]) == 38:
-    return 'chr{}'.format(wildcards.chrom)
-  return wildcards.chrom
+def chromname_in(wc):
+  hg19 = wc.frombuild.lower() in ['grch37', 'hg19'] and not GATK_BUILDS_ONLY
+  if hg19 or int(re.findall(r'\d+', wc.frombuild)[-1]) == 38:
+    if wc.chrom in parse_chrom('1:22,X,Y'):
+      return 'chr{}'.format(wc.chrom)
+    if wc.chrom == "MT":
+      return 'chrM'
+  return wc.chrom
 
 
 rule split_chrom:
@@ -174,6 +202,8 @@ gatk LiftoverVcf \
 
 def chromname(wildcards):
   if int(re.findall(r'\d+', wildcards.tobuild)[-1]) == 38:
+    if wildcards.chrom == 'MT':
+      return 'chrM'
     return 'chr{}'.format(wildcards.chrom)
   return wildcards.chrom
 
@@ -233,6 +263,7 @@ def mismatched_in_vcf(wildcards):
   if GATK_BUILDS_ONLY:
     fbuild = 'b' + str(calculate_build(fbuild))
   string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}_different.vcf.gz'
+  chrs = inputs.loc[wildcards.cohort, 'contigs']
   return expand(string_, frombuild=fbuild, chrom=chrs)
 
 
@@ -241,6 +272,7 @@ def mismatched_in_tbi(wildcards):
   if GATK_BUILDS_ONLY:
     fbuild = 'b' + str(calculate_build(fbuild))
   string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}_different.vcf.gz.tbi'
+  chrs = inputs.loc[wildcards.cohort, 'contigs']
   return expand(string_, frombuild=fbuild, chrom=chrs)
 
 rule separate_chrom_combine:
@@ -256,10 +288,22 @@ bcftools concat -a -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
 '''
 
+
+def same_in_vcf(wildcards):
+  string_ = 'output/{{cohort}}.b{{tobuild}}.chr{chrom}_only.vcf.gz'
+  chrs = filter_mainchrs(inputs.loc[wildcards.cohort, 'contigs'])
+  return expand(string_, chrom=chrs)
+
+
+def same_in_tbi(wildcards):
+  string_ = 'output/{{cohort}}.b{{tobuild}}.chr{chrom}_only.vcf.gz.tbi'
+  chrs = filter_mainchrs(inputs.loc[wildcards.cohort, 'contigs'])
+  return expand(string_, chrom=chrs)
+
 rule same_chrom_combine:
   input:
-    vcf = expand('output/{{cohort}}.b{{tobuild}}.chr{chrom}_only.vcf.gz', chrom=chrs),
-    tbi = expand('output/{{cohort}}.b{{tobuild}}.chr{chrom}_only.vcf.gz.tbi', chrom=chrs)
+    vcf = same_in_vcf,
+    tbi = same_in_tbi
   output:
     vcf = 'output/{cohort}.b{tobuild}.same_chr.vcf.gz',
     tbi = 'output/{cohort}.b{tobuild}.same_chr.vcf.gz.tbi'

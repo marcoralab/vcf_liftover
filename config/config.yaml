@@ -15,24 +15,26 @@ output_builds: [b37, GRCh38]
 #
 #   More info here: https://gatk.broadinstitute.org/hc/en-us/articles/360035890711-GRCh37-hg19-b37-humanG1Kv37-Human-Reference-Discrepancies
 
-all_GATK_builds: False
+all_GATK_builds: True
 
 # concatenate at the end? true if so
 concatenate: true
 
 inputs:
-#  HGDP:
+#  Example:
 #    build: hg38
 #    # Use {chrom} in the filename to indicate if there are files for each chrom.
-#    input_vcf: /sc/arion/projects/LOAD/Public_Data/HGDP/hgdp_wgs.20190516.full.chr{chrom}.vcf.gz
+#    input_vcf: /path/to/files/some_vcffiles.chr{chrom}.vcf.gz
 #    # VCF filter to apply (leave blank or delete for none)
 #    filter: 'PASS'
+#    # contigs/chromosomes with ranges like 1:22 and other separated by ","
+#    #  must be quoted
+#    contigs: 1:22,X,Y,MT
 
   ADNI1microarray:
     build: b36
     # Use {chrom} in the filename to indicate if there are files for each chrom.
     input_vcf: ADNI_cluster_01_forward_757LONI.vcf.gz
-#  ADNI:
-#    build: b37
-#    # Use {chrom} in the filename to indicate if there are files for each chrom.
-#    input_vcf: /sc/arion/projects/LOAD/Data/ADNI/WGS/ADNI.808_indiv.minGQ_21.pass.ADNI_ID.chr{chrom}.vcf.gz
+    # contigs/chromosomes with ranges like 1:22 and other separated by ","
+    #  must be quoted
+    contigs: '1:22'
