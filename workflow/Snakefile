@@ -71,6 +71,15 @@ matched = 'output/{cohort}.b{tobuild}.chr{{chrom}}_only.vcf.gz'
 matched = flatten([liftbuilds(matched, x, y) for x, y in chbs()])
 matched = flatten(expand(matched, chrom = chrs))
 
+matched_allchr = 'output/{cohort}.b{tobuild}.same_chr.vcf.gz'
+matched_allchr = flatten([liftbuilds(matched_allchr, x, y) for x, y in chbs()])
+
+if config['concatenate']:
+  matched = matched_allchr
+
+wildcard_constraints:
+  chrom="\d{1,2}"
+
 
 rule all:
   input:
@@ -83,7 +92,7 @@ def getstartfile(wildcards):
   return inputs.loc[wildcards.cohort, 'input_vcf']
 
 def chromname_in(wildcards):
-  if int(wildcards.frombuild) == 38:
+  if int(re.findall(r'\d+', wildcards.frombuild)[-1]) == 38:
     return 'chr{}'.format(wildcards.chrom)
   return wildcards.chrom
 
@@ -106,7 +115,7 @@ def gsfi(wildcards):
   sf = getstartfile(wildcards)
   if '{chrom}' in sf:
     return sf
-  return rules.split_chrom.output
+  return rules.split_chrom.output.vcf
 
 
 rule filter:
@@ -130,7 +139,7 @@ rule nofilter:
     tbi = temp('temp/{cohort}.{frombuild}.chr{chrom}.UNFILTERED.vcf.gz.tbi')
   conda: 'envs/hgdpenv.yaml'
   shell: '''
-ln -s {input} {output.vcf}
+cp {input} {output.vcf}
 bcftools index -t {output.vcf}
 '''
 
@@ -164,7 +173,7 @@ gatk LiftoverVcf \
 '''
 
 def chromname(wildcards):
-  if int(wildcards.tobuild) == 38:
+  if int(re.findall(r'\d+', wildcards.tobuild)[-1]) == 38:
     return 'chr{}'.format(wildcards.chrom)
   return wildcards.chrom
 
@@ -176,16 +185,16 @@ def matched_in_vcf(wildcards):
   fbuild = inputs.loc[wildcards.cohort, 'build']
   if GATK_BUILDS_ONLY:
     fbuild = 'b' + calculate_build(fbuild)
-  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}.vcf.gz'
-  return expand(string_, frombuild=fbuild, chrom=chrs)
+  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{{chrom}}.vcf.gz'
+  return expand(string_, frombuild=fbuild)
 
 
 def matched_in_tbi(wildcards):
   fbuild = inputs.loc[wildcards.cohort, 'build']
   if GATK_BUILDS_ONLY:
     fbuild = 'b' + calculate_build(fbuild)
-  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{chrom}.vcf.gz.tbi'
-  return expand(string_, frombuild=fbuild, chrom=chrs)
+  string_ = 'temp/{{cohort}}.from-{frombuild}_to-b{{tobuild}}.chr{{chrom}}.vcf.gz.tbi'
+  return expand(string_, frombuild=fbuild)
 
 
 rule keep_chrom:
@@ -199,7 +208,7 @@ rule keep_chrom:
     tbi = 'output/{cohort}.b{tobuild}.chr{chrom}_only.vcf.gz.tbi'
   conda: 'envs/hgdpenv.yaml'
   shell: '''
-bcftools view -t '{params.chrom}' -Oz -o {output.vcf} {input.vcf}
+bcftools view -t {params.chrom} -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
 '''
 
@@ -214,7 +223,7 @@ rule separate_chrom:
     tbi = temp('temp/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}_different.vcf.gz.tbi'),
   conda: 'envs/hgdpenv.yaml'
   shell: '''
-bcftools view -t '^{params.chrom}' -Oz -o {output.vcf} {input.vcf}
+bcftools view -t ^{params.chrom} -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
 '''
 
@@ -241,6 +250,19 @@ rule separate_chrom_combine:
   output:
     vcf = 'output/{cohort}.b{tobuild}.mismatched_chroms.vcf.gz',
     tbi = 'output/{cohort}.b{tobuild}.mismatched_chroms.vcf.gz.tbi'
+  conda: 'envs/hgdpenv.yaml'
+  shell: '''
+bcftools concat -a -Oz -o {output.vcf} {input.vcf}
+bcftools index -t {output.vcf}
+'''
+
+rule same_chrom_combine:
+  input:
+    vcf = expand('output/{{cohort}}.b{{tobuild}}.chr{chrom}_only.vcf.gz', chrom=chrs),
+    tbi = expand('output/{{cohort}}.b{{tobuild}}.chr{chrom}_only.vcf.gz.tbi', chrom=chrs)
+  output:
+    vcf = 'output/{cohort}.b{tobuild}.same_chr.vcf.gz',
+    tbi = 'output/{cohort}.b{tobuild}.same_chr.vcf.gz.tbi'
   conda: 'envs/hgdpenv.yaml'
   shell: '''
 bcftools concat -a -Oz -o {output.vcf} {input.vcf}

@@ -17,24 +17,22 @@ output_builds: [b37, GRCh38]
 
 all_GATK_builds: False
 
-inputs:
-  HGDP:
-    build: hg38
-    # Use {chrom} in the filename to indicate if there are files for each chrom.
-    input_vcf: /sc/arion/projects/LOAD/Public_Data/HGDP/hgdp_wgs.20190516.full.chr{chrom}.vcf.gz
-    # true if the vcf file contains multiple chromosomes and has to be split
-    multichrom: false
-    # VCF filter to apply (leave blank or delete for none)
-    filter: 'PASS'
-    # concatenate at the end? true if so (NOT IMPLEMENTED)
-    concatenate: true
+# concatenate at the end? true if so
+concatenate: true
 
-    output: output/hgdp_wgs.20190516.full
+inputs:
+#  HGDP:
+#    build: hg38
+#    # Use {chrom} in the filename to indicate if there are files for each chrom.
+#    input_vcf: /sc/arion/projects/LOAD/Public_Data/HGDP/hgdp_wgs.20190516.full.chr{chrom}.vcf.gz
+#    # VCF filter to apply (leave blank or delete for none)
+#    filter: 'PASS'
+
+  ADNI1microarray:
+    build: b36
+    # Use {chrom} in the filename to indicate if there are files for each chrom.
+    input_vcf: ADNI_cluster_01_forward_757LONI.vcf.gz
 #  ADNI:
 #    build: b37
 #    # Use {chrom} in the filename to indicate if there are files for each chrom.
 #    input_vcf: /sc/arion/projects/LOAD/Data/ADNI/WGS/ADNI.808_indiv.minGQ_21.pass.ADNI_ID.chr{chrom}.vcf.gz
-#    # true if the vcf file contains multiple chromosomes and has to be split
-#    multichrom: false
-#    # concatenate at the end? true if so (NOT IMPLEMENTED)
-#    concatenate: true
