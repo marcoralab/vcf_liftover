@@ -134,6 +134,9 @@ rule split_chrom:
     chr = chromname_in
   conda: 'envs/hgdpenv.yaml'
   shell: '''
+if [ ! -f {input}.tbi ]; then
+  bcftools index -t {input}
+fi
 bcftools view --regions {params.chr} {input} -Oz -o {output.vcf}
 bcftools index -t {output.vcf}
 '''
@@ -155,6 +158,9 @@ rule filter:
     filter = lambda wildcards: inputs.loc[wildcards.cohort, 'filter']
   conda: 'envs/hgdpenv.yaml'
   shell: '''
+if [ ! -f {input}.tbi ]; then
+  bcftools index -t {input}
+fi
 bcftools view -f {params.filter} {input} -Oz -o {output.vcf}
 bcftools index -t {output.vcf}
 '''
