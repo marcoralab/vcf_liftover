@@ -200,10 +200,10 @@ rule liftover:
   log: 'logs/{cohort}.from-{frombuild}_to-b{tobuild}.chr{chrom}.liftover.log'
   shell: '''
 mkdir -p {params.tempdir}
-gatk LiftoverVcf \
+gatk LiftoverVcf --java-options "-Xms74G" \
  --I {input.vcf} --O {output.vcf} --CHAIN {input.chain} --R {input.fasta} \
  --REJECT {output.rejects} --TMP_DIR {params.tempdir} \
- --MAX_RECORDS_IN_RAM 50000 &> {log}
+ --MAX_RECORDS_IN_RAM 7000 &> {log}
 '''
 
 def chromname(wildcards):
