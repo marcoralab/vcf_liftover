@@ -17,8 +17,7 @@ class dummyprovider:
 FTP = FTPRemoteProvider() if iconnect else dummyprovider
 HTTP = HTTPRemoteProvider() if iconnect else dummyprovider
 
-
-localrules: download_chain, download_fasta
+localrules: download_chain, download_fasta, download_fasta_b37
 gatk = 'docker://broadinstitute/gatk:4.1.8.1'
 
 #liftover_dir = ('ftp://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/')
@@ -91,13 +90,28 @@ def calculate_build_fasta(wildcards):
     build = 'hg38'
   return 'temp/ref/{}.fa.gz'.format(build)
 
+
+# TODO: figure out how to properly fix B37 fasta for chr18
+
 rule fix_fasta:
   input:
     fasta = calculate_build_fasta,
     b37 = 'data/ref/b37.builds.tsv'
-  output: 'data/ref/{tobuild}.fa.gz'
+  output: 'data/ref/{tobuild,^(?!b37)}.fa.gz'
   conda: 'envs/hgdpenv.yaml'
   script: 'scripts/fix_fasta.py'
+
+
+rule download_fasta_b37:
+  input: HTTP.remote('https://storage.googleapis.com/gcp-public-data--broad-references/hg19/v0/Homo_sapiens_assembly19.fasta', allow_redirects=True)
+  output: 'data/ref/b37.fa.gz'
+  conda: 'envs/hgdpenv.yaml'
+  shell:
+    '''
+cat {input} | bgzip > {output}
+samtools faidx {output}
+'''
+
 
 rule dict_fasta:
   input: rules.fix_fasta.output
