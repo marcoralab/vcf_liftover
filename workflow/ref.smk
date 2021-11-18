@@ -18,6 +18,7 @@ FTP = FTPRemoteProvider() if iconnect else dummyprovider
 HTTP = HTTPRemoteProvider() if iconnect else dummyprovider
 
 localrules: download_chain, download_fasta, download_fasta_b37
+ruleorder: download_fasta_b37 > download_fasta
 gatk = 'docker://broadinstitute/gatk:4.1.8.1'
 
 #liftover_dir = ('ftp://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/')
@@ -57,7 +58,7 @@ def calculate_build_chain(wildcards):
 rule fix_chain:
   input:
     chain = calculate_build_chain,
-    b37 = 'data/ref/b37.builds.tsv'
+    b37 = 'resources/b37.builds.tsv'
   output: 'data/ref/{frombuild}_to_{tobuild}.over.chain.gz'
   conda: 'envs/hgdpenv.yaml'
   script: 'scripts/fix_chain.py'
@@ -97,7 +98,7 @@ rule fix_fasta:
   input:
     fasta = calculate_build_fasta,
     b37 = 'data/ref/b37.builds.tsv'
-  output: 'data/ref/{tobuild,^(?!b37)}.fa.gz'
+  output: 'data/ref/{tobuild}.fa.gz'
   conda: 'envs/hgdpenv.yaml'
   script: 'scripts/fix_fasta.py'
 
@@ -114,7 +115,7 @@ samtools faidx {output}
 
 
 rule dict_fasta:
-  input: rules.fix_fasta.output
+  input: 'data/ref/{tobuild}.fa.gz'
   output: 'data/ref/{tobuild}.dict'
   container: gatk
   shell: 'gatk CreateSequenceDictionary -R {input}'
