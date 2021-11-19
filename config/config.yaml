@@ -19,7 +19,7 @@ all_GATK_builds: True
 
 # concatenate at the end? true if so
 concatenate: true
-
+liftover_outdir: "output"
 inputs:
 #  Example:
 #    build: hg38
