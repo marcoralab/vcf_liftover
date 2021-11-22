@@ -59,7 +59,7 @@ rule fix_chain:
   input:
     chain = calculate_build_chain,
     b37 = 'resources/b37.builds.tsv'
-  output: 'data/ref/{frombuild}_to_{tobuild}.over.chain.gz'
+  output: 'resources/ref/{frombuild}_to_{tobuild}.over.chain.gz'
   conda: 'envs/hgdpenv.yaml'
   script: 'scripts/fix_chain.py'
 
@@ -97,15 +97,15 @@ def calculate_build_fasta(wildcards):
 rule fix_fasta:
   input:
     fasta = calculate_build_fasta,
-    b37 = 'data/ref/b37.builds.tsv'
-  output: 'data/ref/{tobuild}.fa.gz'
+    b37 = 'resources/ref/b37.builds.tsv'
+  output: 'resources/ref/{tobuild}.fa.gz'
   conda: 'envs/hgdpenv.yaml'
   script: 'scripts/fix_fasta.py'
 
 
 rule download_fasta_b37:
   input: HTTP.remote('https://storage.googleapis.com/gcp-public-data--broad-references/hg19/v0/Homo_sapiens_assembly19.fasta', allow_redirects=True)
-  output: 'data/ref/b37.fa.gz'
+  output: 'resources/ref/b37.fa.gz'
   conda: 'envs/hgdpenv.yaml'
   shell:
     '''
@@ -115,7 +115,7 @@ samtools faidx {output}
 
 
 rule dict_fasta:
-  input: 'data/ref/{tobuild}.fa.gz'
-  output: 'data/ref/{tobuild}.dict'
+  input: 'resources/ref/{tobuild}.fa.gz'
+  output: 'resources/ref/{tobuild}.dict'
   container: gatk
   shell: 'gatk CreateSequenceDictionary -R {input}'

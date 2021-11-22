@@ -190,9 +190,9 @@ def lift_input(wildcards):
 rule liftover:
   input:
     vcf = lift_input,
-    chain = 'data/ref/{frombuild}_to_{tobuild}.over.chain.gz',
-    fasta = 'data/ref/{tobuild}.fa.gz',
-    fdict = 'data/ref/{tobuild}.dict'
+    chain = 'resources/ref/{frombuild}_to_{tobuild}.over.chain.gz',
+    fasta = 'resources/ref/{tobuild}.fa.gz',
+    fdict = 'resources/ref/{tobuild}.dict'
   output:
     vcf = temp('temp/{liftover_outdir}/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}.vcf.gz'),
     tbi = temp('temp/{liftover_outdir}/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}.vcf.gz.tbi'),
