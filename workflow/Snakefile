@@ -136,6 +136,10 @@ rule split_chrom:
   params:
     chr = chromname_in
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 5200,
+    walltime = '24:00'
   shell: '''
 if [ ! -f {input}.tbi ]; then
   bcftools index -t {input}
@@ -160,6 +164,10 @@ rule filter:
   params:
     filter = lambda wildcards: inputs.loc[wildcards.cohort, 'filter']
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 5200,
+    walltime = '24:00'
   shell: '''
 if [ ! -f {input}.tbi ]; then
   bcftools index -t {input}
@@ -175,6 +183,10 @@ rule nofilter:
     vcf = temp('temp/{liftover_outdir}/{cohort}.{frombuild}.chr{chrom}.UNFILTERED.vcf.gz'),
     tbi = temp('temp/{liftover_outdir}/{cohort}.{frombuild}.chr{chrom}.UNFILTERED.vcf.gz.tbi')
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 4000,
+    time_min = 120
   shell: '''
 ln -sr {input} {output.vcf}
 bcftools index -t {output.vcf}
@@ -201,6 +213,10 @@ rule liftover:
     tempdir = 'temp/{liftover_outdir}/liftOver/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}'
   container: gatk
   log: '{liftover_outdir}/logs/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}.liftover.log'
+  threads: 10
+  resources:
+    mam_mb = 8000,
+    walltime = '24:00'
   shell: '''
 mkdir -p {params.tempdir}
 gatk LiftoverVcf --java-options "-Xms74G" \
@@ -239,6 +255,10 @@ rule matched_chrom:
     vcf = '{liftover_outdir}/{cohort}.{tobuild}.chr{chrom}_only.vcf.gz',
     tbi = '{liftover_outdir}/{cohort}.{tobuild}.chr{chrom}_only.vcf.gz.tbi'
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 4000,
+    time_min = 240
   shell: '''
 bcftools view -t {params.chrom} -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
@@ -254,6 +274,10 @@ rule mismatched_chrom:
     vcf = temp('temp/{liftover_outdir}/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}_different.vcf.gz'),
     tbi = temp('temp/{liftover_outdir}/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}_different.vcf.gz.tbi'),
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 4000,
+    time_min = 240
   shell: '''
 bcftools view -t ^{params.chrom} -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
@@ -285,6 +309,10 @@ rule mismatched_chrom_combine:
     vcf = '{liftover_outdir}/{cohort}.{tobuild}.mismatched_chroms.vcf.gz',
     tbi = '{liftover_outdir}/{cohort}.{tobuild}.mismatched_chroms.vcf.gz.tbi'
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 5200,
+    time_min = 240
   shell: '''
 bcftools concat -a -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
@@ -303,6 +331,10 @@ rule matched_chrom_combine:
     vcf = '{liftover_outdir}/{cohort}.{tobuild}.same_chr.vcf.gz',
     tbi = '{liftover_outdir}/{cohort}.{tobuild}.same_chr.vcf.gz.tbi'
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 5200,
+    time_min = 240
   shell: '''
 bcftools concat -a -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}

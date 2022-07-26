@@ -31,6 +31,10 @@ rule download_chain:
   params:
     chainfile = 'hg{frombuild_raw_chain}ToHg{tobuild_raw_chain}.over.chain.gz'
   output: temp('temp/ref/hg{frombuild_raw_chain}_to_hg{tobuild_raw_chain}.over.chain.gz')
+  threads: 1
+  resources:
+    mam_mb = 1000,
+    time_min = 60
   shell: '''
 md5sum -c <(cat {input.checksum} | \
             grep '{params.chainfile}' | \
@@ -61,6 +65,10 @@ rule fix_chain:
     b37 = 'resources/b37.builds.tsv'
   output: 'resources/ref/{frombuild}_to_{tobuild}.over.chain.gz'
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 5200,
+    time_min = 240
   script: 'scripts/fix_chain.py'
 
 
@@ -72,6 +80,10 @@ rule download_fasta:
     fastafile = '{tobuild_raw}.fa.gz'
   output: temp('temp/ref/{tobuild_raw,hg19|hg38}.fa.gz')
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 1000,
+    time_min = 60
   shell: '''
 md5sum -c <(cat {input.checksum} | \
             grep '{params.fastafile}' | \
@@ -100,6 +112,10 @@ rule fix_fasta:
     b37 = 'resources/ref/b37.builds.tsv'
   output: 'resources/ref/{tobuild}.fa.gz'
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 5200,
+    time_min = 240
   script: 'scripts/fix_fasta.py'
 
 
@@ -107,6 +123,10 @@ rule download_fasta_b37:
   input: HTTP.remote('https://storage.googleapis.com/gcp-public-data--broad-references/hg19/v0/Homo_sapiens_assembly19.fasta', allow_redirects=True)
   output: 'resources/ref/b37.fa.gz'
   conda: 'envs/hgdpenv.yaml'
+  threads: 1
+  resources:
+    mam_mb = 4000,
+    time_min = 240
   shell:
     '''
 cat {input} | bgzip > {output}
@@ -118,4 +138,8 @@ rule dict_fasta:
   input: 'resources/ref/{tobuild}.fa.gz'
   output: 'resources/ref/{tobuild}.dict'
   container: gatk
+  threads: 1
+  resources:
+    mam_mb = 5200,
+    time_min = 240
   shell: 'gatk CreateSequenceDictionary -R {input}'
