@@ -109,7 +109,7 @@ def calculate_build_fasta(wildcards):
 rule fix_fasta:
   input:
     fasta = calculate_build_fasta,
-    b37 = 'resources/ref/b37.builds.tsv'
+    b37 = 'resources/b37.builds.tsv'
   output: 'resources/ref/{tobuild}.fa.gz'
   conda: 'envs/hgdpenv.yaml'
   threads: 1
