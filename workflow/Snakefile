@@ -188,7 +188,7 @@ rule nofilter:
     mam_mb = 4000,
     time_min = 120
   shell: '''
-ln -sr {input} {output.vcf}
+cp {input} {output.vcf}
 bcftools index -t {output.vcf}
 '''
 
