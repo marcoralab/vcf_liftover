@@ -138,7 +138,7 @@ rule split_chrom:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 5200,
+    mem_mb = 5200,
     walltime = '24:00'
   shell: '''
 if [ ! -f {input}.tbi ]; then
@@ -166,7 +166,7 @@ rule filter:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 5200,
+    mem_mb = 5200,
     walltime = '24:00'
   shell: '''
 if [ ! -f {input}.tbi ]; then
@@ -185,7 +185,7 @@ rule nofilter:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 4000,
+    mem_mb = 4000,
     time_min = 120
   shell: '''
 cp {input} {output.vcf}
@@ -215,7 +215,7 @@ rule liftover:
   log: '{liftover_outdir}/logs/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}.liftover.log'
   threads: 10
   resources:
-    mam_mb = 8000,
+    mem_mb = 8000,
     walltime = '24:00'
   shell: '''
 mkdir -p {params.tempdir}
@@ -257,7 +257,7 @@ rule matched_chrom:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 4000,
+    mem_mb = 4000,
     time_min = 240
   shell: '''
 bcftools view -t {params.chrom} -Oz -o {output.vcf} {input.vcf}
@@ -276,7 +276,7 @@ rule mismatched_chrom:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 4000,
+    mem_mb = 4000,
     time_min = 240
   shell: '''
 bcftools view -t ^{params.chrom} -Oz -o {output.vcf} {input.vcf}
@@ -311,7 +311,7 @@ rule mismatched_chrom_combine:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 5200,
+    mem_mb = 5200,
     time_min = 240
   shell: '''
 bcftools concat -a -Oz -o {output.vcf} {input.vcf}
@@ -333,7 +333,7 @@ rule matched_chrom_combine:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 5200,
+    mem_mb = 5200,
     time_min = 240
   shell: '''
 bcftools concat -a -Oz -o {output.vcf} {input.vcf}
