@@ -33,7 +33,7 @@ rule download_chain:
   output: temp('temp/ref/hg{frombuild_raw_chain}_to_hg{tobuild_raw_chain}.over.chain.gz')
   threads: 1
   resources:
-    mam_mb = 1000,
+    mem_mb = 1000,
     time_min = 60
   shell: '''
 md5sum -c <(cat {input.checksum} | \
@@ -67,7 +67,7 @@ rule fix_chain:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 5200,
+    mem_mb = 5200,
     time_min = 240
   script: 'scripts/fix_chain.py'
 
@@ -82,7 +82,7 @@ rule download_fasta:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 1000,
+    mem_mb = 1000,
     time_min = 60
   shell: '''
 md5sum -c <(cat {input.checksum} | \
@@ -114,7 +114,7 @@ rule fix_fasta:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 5200,
+    mem_mb = 5200,
     time_min = 240
   script: 'scripts/fix_fasta.py'
 
@@ -125,7 +125,7 @@ rule download_fasta_b37:
   conda: 'envs/hgdpenv.yaml'
   threads: 1
   resources:
-    mam_mb = 4000,
+    mem_mb = 4000,
     time_min = 240
   shell:
     '''
@@ -140,6 +140,6 @@ rule dict_fasta:
   container: gatk
   threads: 1
   resources:
-    mam_mb = 5200,
+    mem_mb = 5200,
     time_min = 240
   shell: 'gatk CreateSequenceDictionary -R {input}'
