@@ -7,7 +7,7 @@ from urllib.error import URLError
 try:
   response = urlopen('https://www.google.com/', timeout=10)
   iconnect = True
-except urllib.error.URLError as ex:
+except URLError as ex:
   iconnect = False
 
 class dummyprovider:
