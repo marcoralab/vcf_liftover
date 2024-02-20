@@ -17,7 +17,6 @@ class dummyprovider:
 FTP = FTPRemoteProvider() if iconnect else dummyprovider
 HTTP = HTTPRemoteProvider() if iconnect else dummyprovider
 
-localrules: download_chain, download_fasta, download_fasta_b37
 ruleorder: download_fasta_b37 > download_fasta
 gatk = 'docker://broadinstitute/gatk:4.1.8.1'
 
@@ -31,6 +30,7 @@ rule download_chain:
   params:
     chainfile = 'hg{frombuild_raw_chain}ToHg{tobuild_raw_chain}.over.chain.gz'
   output: temp('temp/ref/hg{frombuild_raw_chain}_to_hg{tobuild_raw_chain}.over.chain.gz')
+  localrule: True
   threads: 1
   resources:
     mem_mb = 1000,
@@ -80,6 +80,7 @@ rule download_fasta:
     fastafile = '{tobuild_raw}.fa.gz'
   output: temp('temp/ref/{tobuild_raw,hg19|hg38}.fa.gz')
   conda: 'envs/hgdpenv.yaml'
+  localrule: True
   threads: 1
   resources:
     mem_mb = 1000,
@@ -123,6 +124,7 @@ rule download_fasta_b37:
   input: HTTP.remote('https://storage.googleapis.com/gcp-public-data--broad-references/hg19/v0/Homo_sapiens_assembly19.fasta', allow_redirects=True)
   output: 'resources/ref/b37.fa.gz'
   conda: 'envs/hgdpenv.yaml'
+  localrule: True
   threads: 1
   resources:
     mem_mb = 4000,
