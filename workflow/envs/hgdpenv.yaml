@@ -3,9 +3,9 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - bcftools=1.12
-  - htslib=1.12
-  - samtools=1.12
+  - bcftools=1.21
+  - htslib=1.20
+  - samtools=1.20
   - python=3.9
   - pandas=1.2.4
   - numpy=1.20.2
