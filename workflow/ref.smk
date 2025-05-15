@@ -1,32 +1,25 @@
-from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
-from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
-
 from urllib.request import urlopen
 from urllib.error import URLError
 
-try:
-  response = urlopen('https://www.google.com/', timeout=10)
-  iconnect = True
-except URLError as ex:
-  iconnect = False
-
-class dummyprovider:
-  def remote(string_, allow_redirects = "foo"):
-    return string_
-
-FTP = FTPRemoteProvider() if iconnect else dummyprovider
-HTTP = HTTPRemoteProvider() if iconnect else dummyprovider
+iconnect = False
+if not ('nointernet' in config and config['nointernet']):
+    try:
+        response = urlopen('https://www.google.com/', timeout=10)
+        iconnect = True
+    except URLError as ex:
+        pass
+ftp = storage.ftp if iconnect else lambda x: x
+http = storage.http if iconnect else lambda x: x
 
 ruleorder: download_fasta_b37 > download_fasta
 gatk = 'docker://broadinstitute/gatk:4.1.8.1'
 
 #liftover_dir = ('ftp://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/')
 
-
 rule download_chain:
   input:
-    chain = HTTP.remote('http://hgdownload.cse.ucsc.edu/goldenpath/hg{frombuild_raw_chain}/liftOver/hg{frombuild_raw_chain}ToHg{tobuild_raw_chain}.over.chain.gz', allow_redirects=True),
-    checksum = HTTP.remote('http://hgdownload.cse.ucsc.edu/goldenpath/hg{frombuild_raw_chain}/liftOver/md5sum.txt', allow_redirects=True)
+    chain = http('http://hgdownload.cse.ucsc.edu/goldenpath/hg{frombuild_raw_chain}/liftOver/hg{frombuild_raw_chain}ToHg{tobuild_raw_chain}.over.chain.gz'),
+    checksum = http('http://hgdownload.cse.ucsc.edu/goldenpath/hg{frombuild_raw_chain}/liftOver/md5sum.txt')
   params:
     chainfile = 'hg{frombuild_raw_chain}ToHg{tobuild_raw_chain}.over.chain.gz'
   output: temp('temp/ref/hg{frombuild_raw_chain}_to_hg{tobuild_raw_chain}.over.chain.gz')
@@ -74,8 +67,8 @@ rule fix_chain:
 
 rule download_fasta:
   input:
-    fasta = HTTP.remote('https://hgdownload.soe.ucsc.edu/goldenPath/{tobuild_raw}/bigZips/{tobuild_raw}.fa.gz', allow_redirects=True),
-    checksum = HTTP.remote('https://hgdownload.soe.ucsc.edu/goldenPath/{tobuild_raw}/bigZips/md5sum.txt', allow_redirects=True)
+    fasta = http('https://hgdownload.soe.ucsc.edu/goldenPath/{tobuild_raw}/bigZips/{tobuild_raw}.fa.gz'),
+    checksum = http('https://hgdownload.soe.ucsc.edu/goldenPath/{tobuild_raw}/bigZips/md5sum.txt')
   params:
     fastafile = '{tobuild_raw}.fa.gz'
   output: temp('temp/ref/{tobuild_raw,hg19|hg38}.fa.gz')
@@ -121,7 +114,7 @@ rule fix_fasta:
 
 
 rule download_fasta_b37:
-  input: HTTP.remote('https://storage.googleapis.com/gcp-public-data--broad-references/hg19/v0/Homo_sapiens_assembly19.fasta', allow_redirects=True)
+  input: http('https://storage.googleapis.com/gcp-public-data--broad-references/hg19/v0/Homo_sapiens_assembly19.fasta')
   output: 'resources/ref/b37.fa.gz'
   conda: 'envs/hgdpenv.yaml'
   localrule: True
@@ -145,3 +138,5 @@ rule dict_fasta:
     mem_mb = 5200,
     time_min = 240
   shell: 'gatk CreateSequenceDictionary -R {input}'
+
+### Processed by update_sm8plus.py for Snakemake 8+ ###

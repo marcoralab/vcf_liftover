@@ -139,7 +139,7 @@ rule split_chrom:
   threads: 1
   resources:
     mem_mb = 5200,
-    walltime = '24:00'
+    runtime: "24h"
   shell: '''
 if [ ! -f {input}.tbi ]; then
   bcftools index -t {input}
@@ -167,7 +167,7 @@ rule filter:
   threads: 1
   resources:
     mem_mb = 5200,
-    walltime = '24:00'
+    runtime: "24h"
   shell: '''
 if [ ! -f {input}.tbi ]; then
   bcftools index -t {input}
@@ -215,8 +215,8 @@ rule liftover:
   log: '{liftover_outdir}/logs/{cohort}.from-{frombuild}_to-{tobuild}.chr{chrom}.liftover.log'
   threads: 10
   resources:
-    mem_mb = 8000,
-    walltime = '24:00'
+    mem_mb = 80000,
+    runtime: "24h"
   shell: '''
 mkdir -p {params.tempdir}
 gatk LiftoverVcf --java-options "-Xms74G" \
@@ -339,3 +339,5 @@ rule matched_chrom_combine:
 bcftools concat -a -Oz -o {output.vcf} {input.vcf}
 bcftools index -t {output.vcf}
 '''
+
+### Processed by update_sm8plus.py for Snakemake 8+ ###
