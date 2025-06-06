@@ -3,6 +3,8 @@ import stat
 import re
 import pandas as pd
 import numpy as np
+from snakemake.utils import min_version
+min_version("8.0")
 
 
 def parse_chrom(chrs):
@@ -139,7 +141,7 @@ rule split_chrom:
   threads: 1
   resources:
     mem_mb = 5200,
-    runtime: "24h"
+    runtime = "24h"
   shell: '''
 if [ ! -f {input}.tbi ]; then
   bcftools index -t {input}
@@ -167,7 +169,7 @@ rule filter:
   threads: 1
   resources:
     mem_mb = 5200,
-    runtime: "24h"
+    runtime = "24h"
   shell: '''
 if [ ! -f {input}.tbi ]; then
   bcftools index -t {input}
@@ -216,7 +218,7 @@ rule liftover:
   threads: 10
   resources:
     mem_mb = 80000,
-    runtime: "24h"
+    runtime = "24h"
   shell: '''
 mkdir -p {params.tempdir}
 gatk LiftoverVcf --java-options "-Xms74G" \
