@@ -54,7 +54,7 @@ def calculate_build_chain(wildcards):
 
 rule fix_chain:
   input:
-    chain = calculate_build_chain,
+    chain = ancient(calculate_build_chain),
     b37 = 'resources/b37.builds.tsv'
   output: 'resources/ref/{frombuild}_to_{tobuild}.over.chain.gz'
   conda: 'envs/hgdpenv.yaml'
@@ -102,7 +102,7 @@ def calculate_build_fasta(wildcards):
 
 rule fix_fasta:
   input:
-    fasta = calculate_build_fasta,
+    fasta = ancient(calculate_build_fasta),
     b37 = 'resources/b37.builds.tsv'
   output: 'resources/ref/{tobuild}.fa.gz'
   conda: 'envs/hgdpenv.yaml'
